@@ -128,8 +128,8 @@
         RISC-V.  Linux because instead of programming directly to the hardware on a bare PC which I
         could have done, I went for a simpler tutorial by assuming that the 'hardware' is a Linux
         process with a few basic system calls (read, write and exit and that's about all).  RISC-V
-        is needed because I had to write the assembly for a processor. 
-        (Of course when I say 'RISC-V', any 64-bit RISC-V processor or VM will do.  
+        is needed because I had to write the assembly for a processor.
+        (Of course when I say 'RISC-V', any 32-bit RISC-V processor or VM will do.
         I'm compiling this on a qemu VM).
 
         Again, to assemble this you will need gcc and gas (the GNU assembler).  The commands to
@@ -292,9 +292,9 @@
           s1 -> 1C 00 00 00
                 2C 00 00 00
 
-        The all-important instructions are called `ld` and `addi`. Firstly `ld` reads the memory 
+        The all-important instructions are called `ld` and `addi`. Firstly `ld` reads the memory
         at s1 into the register (a0).  Secondly `addi` increments s1 by 4 bytes
-        (we are on a 32 bits machine, the pointer size is 32 bits).  
+        (we are on a 32 bits machine, the pointer size is 32 bits).
         So after the two instructions, the situation now looks like this:
 
                 08 00 00 00     <- We're still executing this one
@@ -309,7 +309,7 @@
                 1C 00 00 00     <- Now we're executing this subroutine.
           s1 -> 2C 00 00 00
 
-        To make this work, each subroutine is followed by the four instructions: 
+        To make this work, each subroutine is followed by the four instructions:
         'ld a0, 0(s1); addi s1, s1, 4; ld t0, 0(a0); jalr t0'
         which make the jump to the next subroutine.
 
@@ -540,8 +540,8 @@
         addi fp, fp, 4
         .endm
 
-        /* Macros to help us handling function calls. 
-        This macro saves all nessacery registers before a function call 
+        /* Macros to help us handling function calls.
+        This macro saves all nessacery registers before a function call
         and resume these registers after the call */
         .macro RCALL symbol
         PUSH ra                                 // push ra (return address) on to stack
@@ -636,11 +636,11 @@ stack points -> | addr of DOUBLE   |       + 4 =   +------------------+
         .globl _start
 _start:
         la t0, var_S0
-        sw sp, 0(t0)            // Save the initial data stack pointer in FORTH variable S0.
+        sw sp, 0(t0)                   // Save the initial data stack pointer in FORTH variable S0.
         la fp, return_stack_top        // Initialise the return stack.
         call set_up_data_segment
 
-        la s1, cold_start       // Initialise interpreter.
+        la s1, cold_start               // Initialise interpreter.
         NEXT                            // Run interpreter!
 
         .section .rodata
@@ -663,7 +663,7 @@ cold_start:                     // High-level code without a codeword.
            ^       len                         pad  codeword      |
            |                                                      V
           LINK in next word                             points to codeword of DUP
-        
+
         Initially we can't just write ": DOUBLE DUP + ;" (ie. that literal string) here because we
         don't yet have anything to read the string, break it up at spaces, parse each word, etc. etc.
         So instead we will have to define built-in words using the GNU assembler data constructors
@@ -1146,9 +1146,9 @@ code_\label :                   // assembler code follows
         RCALL _COPY_BYTES
         NEXT
 
-/* Copy bytes   
-        a0: length      
-        a1: destination address 
+/* Copy bytes
+        a0: length
+        a1: destination address
         a2: source address
 */
 _COPY_BYTES:
@@ -1459,7 +1459,7 @@ emit_scratch:
 */
 
 
-        /* Macro to help us check a character is or is'nt blank. 
+        /* Macro to help us check a character is or is'nt blank.
         Set 0 to the result register if the src register is a blank char */
         .macro IS_BLANK result, src
         li t0, ' '
@@ -1488,17 +1488,16 @@ _WORD:
         PUSH a2
         RCALL _KEY              // get next key, returned in a0
         POP a2
-        IS_BLANK a1, a0 // is blank?
+        IS_BLANK a1, a0         // is blank?
         beqz a1, 3f             // if not, keep looping
         j 2b
-3:
-        /* Return the word (well, the static buffer) and length. */
+
+3:      /* Return the word (well, the static buffer) and length. */
         la a0, word_buffer      // return address of the word
         sub a1, a2, a0          // return length of the word
         ret
 
-        /* Code to skip \ comments to end of the current line. */
-4:
+4:      /* skip \ comments to end of the current line. */
         RCALL _KEY
         addi a1, a0, -'\n'      // end of line yet?
         bnez a1, 4b
@@ -1876,7 +1875,7 @@ _TCFA:
 
         la a1, var_HERE         // a1 is the address of the header
         lw a1, 0(a1)
-        la a3, var_LATEST       
+        la a3, var_LATEST
         lw t0, 0(a3)            // Get link pointer
         sw t0, 0(a1)            // and store it in the header.
         addi a1, a1, 4
