@@ -1152,8 +1152,13 @@ code_\label :                   // assembler code follows
         a2: source address
 */
 _COPY_BYTES:
+/*
         slti a4, a0, 4          // jump to copy byte if length is < 4
         bnez a4, 2f
+        andi t0, a1, 3          // check if destination is word aligned
+        bnez t0, 2f             // and copy bytes if not
+        andi t0, a2, 3          // check if source is word aligned
+        bnez t0, 2f             // and copy bytes if not
 1:      // copy word by word
         lw a3, 0(a2)
         sw a3, 0(a1)            // copy source to destination
@@ -1163,6 +1168,7 @@ _COPY_BYTES:
         addi a2, a2, 4
         slti a4, a0, 4          // check if length is < 4
         beqz a4, 1b
+*/
 2:      // copy byte
         lb a3, 0(a2)
         sb a3, 0(a1)
@@ -1602,7 +1608,24 @@ _NUMBER:
         FIND doesn't find dictionary entries which are flagged as HIDDEN.  See below for why.
 */
 
-        defcode "FIND",4,,FIND, NUMBER
+        defcode "TOUPPER",7,,TOUPPER, NUMBER // ( c -- C )
+        POP a0
+        RCALL _TOUPPER
+        PUSH a0
+        NEXT
+
+_TOUPPER:
+        li   t5, ('z' + 1)
+        li   t6, ('a' - 1)
+        sltu t5, a0, t5         // t5 = is a0 less or equal 'z' ?
+        sltu t6, t6, a0         // t6 = is a0 greater or equal 'a'?
+        and  t6, t5, t6         // t6 = 'a' <= a0 <= 'z'
+        beqz t6, 1f             // a0 is not lower case => return
+        li   t5, 32
+        sub  a0, a0, t5        // a0 is lower case => convert to upper
+1:      ret
+
+        defcode "FIND",4,,FIND, TOUPPER
         POP a1 a2               // a1 = length  a2 = address
         RCALL _FIND
         PUSH a0                 // a0 = address of dictionary entry (or NULL)
@@ -1610,24 +1633,32 @@ _NUMBER:
 
 _FIND:
         // Now we start searching backwards through the dictionary for this word.
-        la a0, var_LATEST       // LATEST points to name header of the latest word in the dictionary
-        lw a0, 0(a0)
+        la   a0, var_LATEST     // LATEST points to name header of the latest word in the dictionary
+        lw   a0, 0(a0)          // a0 = address of latest word header
 1:      beqz a0, 4f             // NULL pointer?  (end of the linked list)
 
         // Compare the length expected and the length of the word.
         // Note that if the F_HIDDEN flag is set on the word, then by a bit of trickery
         // this won't pick the word (the length will appear to be wrong).
-        lb a3, 4(a0)            // a0 = flags+length field
-        andi a3, a3, (F_HIDDEN|F_LENMASK) // a0 = name length
-        sub t0, a3, a1          // Length is the same?
+        lb   a3, 4(a0)                      // a0 = flags+length field
+        andi a3, a3, (F_HIDDEN|F_LENMASK)   // a0 = name length
+        sub  t0, a3, a1                     // Length is the same?
         bnez t0, 3f
 
         // Compare the strings in detail.
-        mv t0, a0
-        mv t2, a2
-2:      lb t1, 5(t0)            // Dictionary string we are checking against.
-        lb t3, 0(t2)
-        sub t1, t1, t3          // Compare the strings.
+        mv   t0, a0             // t0 = address of dictionary entry
+        mv   t2, a2             // t2 = address of word to find
+2:      lb   t1, 5(t0)          // t1 = byte of dictionary string we are checking against.
+        lb   t3, 0(t2)          // t3 = byte of word to find
+        PUSH a0                 // save original a0
+        mv   a0, t1             // t1 = arg of TOUPPER
+        RCALL _TOUPPER
+        mv   t1, a0
+        mv   a0, t3             // t3 = arg of TOUPPER
+        RCALL _TOUPPER
+        mv   t3, a0
+        POP  a0                 // restore original a0
+        sub  t1, t1, t3         // Compare the strings.
         bnez t1, 3f             // Not the same.
         addi t0, t0, 1
         addi t2, t2, 1
